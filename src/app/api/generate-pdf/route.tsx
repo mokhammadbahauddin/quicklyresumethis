@@ -6,7 +6,7 @@ import { ResumeData } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { resumeData } = body as { resumeData: ResumeData };
+    const { resumeData, template } = body as { resumeData: ResumeData, template?: any };
 
     if (!resumeData) {
       return NextResponse.json(
@@ -27,8 +27,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate PDF
-    const pdfBuffer = await renderToBuffer(<ResumePDFDocument data={resumeData} />);
+    // Generate PDF with selected template
+    const pdfBuffer = await renderToBuffer(
+      <ResumePDFDocument
+        data={resumeData}
+        template={template}
+      />
+    );
 
     // Return PDF as downloadable file
     return new NextResponse(pdfBuffer as unknown as BodyInit, {

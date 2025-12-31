@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ResumeData } from '@/lib/types';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import {
   User,
   FileText,
@@ -16,7 +17,10 @@ import {
   ChevronUp,
   Plus,
   Trash2,
-  Save
+  Save,
+  GripVertical,
+  Wand2,
+  Sparkles
 } from 'lucide-react';
 
 // Zod validation schema
@@ -82,7 +86,7 @@ function Section({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md">
+    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md mb-4">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -106,16 +110,46 @@ function Section({
   );
 }
 
+// AI Enhancement Hook
+const useAIEnhancer = () => {
+  const [loadingField, setLoadingField] = useState<string | null>(null);
+
+  const enhanceText = async (text: string, fieldId: string, onComplete: (newText: string) => void) => {
+    if (!text || text.length < 10) return;
+
+    setLoadingField(fieldId);
+    try {
+      const res = await fetch('/api/enhance-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.enhancedText) {
+        onComplete(data.enhancedText);
+      }
+    } catch (error) {
+      console.error('AI Enhance failed:', error);
+    } finally {
+      setLoadingField(null);
+    }
+  };
+
+  return { enhanceText, loadingField };
+};
+
 export default function ResumeEditor({ initialData, onChange }: ResumeEditorProps) {
   const [newSkill, setNewSkill] = useState('');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const { enhanceText, loadingField } = useAIEnhancer();
 
   const {
     register,
     control,
     watch,
     setValue,
-    formState: { errors, isDirty },
+    formState: { errors },
   } = useForm<ResumeFormData>({
     resolver: zodResolver(resumeSchema),
     defaultValues: initialData,
@@ -125,6 +159,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
     fields: experienceFields,
     append: appendExperience,
     remove: removeExperience,
+    move: moveExperience,
   } = useFieldArray({
     control,
     name: 'experience',
@@ -134,6 +169,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
     fields: educationFields,
     append: appendEducation,
     remove: removeEducation,
+    move: moveEducation,
   } = useFieldArray({
     control,
     name: 'education',
@@ -184,6 +220,16 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
     }
   };
 
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    if (result.type === 'EXPERIENCE') {
+      moveExperience(result.source.index, result.destination.index);
+    } else if (result.type === 'EDUCATION') {
+      moveEducation(result.source.index, result.destination.index);
+    }
+  };
+
   const inputClasses = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-shadow text-sm';
   const labelClasses = 'block text-sm font-semibold text-gray-700 mb-1.5';
   const errorClasses = 'text-red-500 text-xs mt-1 flex items-center gap-1';
@@ -196,7 +242,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
         {lastSaved ? `Saved at ${lastSaved.toLocaleTimeString()}` : 'Unsaved changes'}
       </div>
 
-      <div className="space-y-4 overflow-y-auto pr-2 pb-20 custom-scrollbar" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+      <div className="overflow-y-auto pr-2 pb-20 custom-scrollbar" style={{ maxHeight: 'calc(100vh - 180px)' }}>
 
         {/* Personal Information */}
         <Section title="Personal Information" icon={User} defaultOpen={true}>
@@ -245,13 +291,31 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
 
         {/* Professional Summary */}
         <Section title="Professional Summary" icon={FileText} defaultOpen={true}>
-          <div>
+          <div className="relative">
             <textarea
               {...register('summary')}
               className={`${inputClasses} min-h-32 resize-y`}
               maxLength={500}
               placeholder="Experienced software engineer with 5+ years..."
             />
+            <button
+              type="button"
+              onClick={() => {
+                const current = watch('summary') || '';
+                enhanceText(current, 'summary', (text) => setValue('summary', text));
+              }}
+              className="absolute bottom-6 right-2 p-1.5 text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors group"
+              title="Enhance with AI"
+            >
+              {loadingField === 'summary' ? (
+                <div className="animate-spin h-4 w-4 border-2 border-purple-600 border-t-transparent rounded-full" />
+              ) : (
+                <div className="flex items-center gap-1">
+                   <Wand2 size={16} />
+                   <span className="text-xs font-medium max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap">Magic Fix</span>
+                </div>
+              )}
+            </button>
             <div className="flex justify-between mt-1">
               <div>
                 {errors.summary && <p className={errorClasses}>{errors.summary.message}</p>}
@@ -265,178 +329,247 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
           </div>
         </Section>
 
-        {/* Work Experience */}
-        <Section title="Work Experience" icon={Briefcase}>
-          <div className="space-y-6">
-            {experienceFields.map((field, index) => (
-              <div key={field.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative group">
-                <button
-                  type="button"
-                  onClick={() => removeExperience(index)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors p-1"
-                  title="Remove Experience"
+        <DragDropContext onDragEnd={onDragEnd}>
+          {/* Work Experience */}
+          <Section title="Work Experience" icon={Briefcase}>
+            <Droppable droppableId="experience" type="EXPERIENCE">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-6"
                 >
-                  <Trash2 size={18} />
-                </button>
+                  {experienceFields.map((field, index) => (
+                    <Draggable key={field.id} draggableId={field.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`p-4 border border-gray-200 rounded-lg bg-gray-50 relative group transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500 z-10' : ''}`}
+                        >
+                          <div
+                            {...provided.dragHandleProps}
+                            className="absolute top-4 left-2 text-gray-300 hover:text-gray-600 cursor-grab active:cursor-grabbing p-1"
+                          >
+                            <GripVertical size={20} />
+                          </div>
 
-                <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Position {index + 1}</h4>
+                          <button
+                            type="button"
+                            onClick={() => removeExperience(index)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors p-1"
+                            title="Remove Position"
+                          >
+                            <Trash2 size={18} />
+                          </button>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 space-y-0">
-                  <div className="col-span-1 md:col-span-2">
-                    <label className={labelClasses}>Job Title *</label>
-                    <input {...register(`experience.${index}.jobTitle`)} className={inputClasses} placeholder="Senior Developer" />
-                    {errors.experience?.[index]?.jobTitle && (
-                      <p className={errorClasses}>{errors.experience[index]?.jobTitle?.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className={labelClasses}>Company *</label>
-                    <input {...register(`experience.${index}.company`)} className={inputClasses} placeholder="Acme Corp" />
-                    {errors.experience?.[index]?.company && (
-                      <p className={errorClasses}>{errors.experience[index]?.company?.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className={labelClasses}>Location</label>
-                    <input {...register(`experience.${index}.location`)} className={inputClasses} placeholder="Remote" />
-                  </div>
-                  <div>
-                    <label className={labelClasses}>Start Date *</label>
-                    <input
-                      {...register(`experience.${index}.startDate`)}
-                      className={inputClasses}
-                      placeholder="Jan 2020"
-                    />
-                    {errors.experience?.[index]?.startDate && (
-                      <p className={errorClasses}>{errors.experience[index]?.startDate?.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className={labelClasses}>End Date *</label>
-                    <input
-                      {...register(`experience.${index}.endDate`)}
-                      className={inputClasses}
-                      placeholder="Present"
-                    />
-                    {errors.experience?.[index]?.endDate && (
-                      <p className={errorClasses}>{errors.experience[index]?.endDate?.message}</p>
-                    )}
-                  </div>
-                  <div className="col-span-1 md:col-span-2">
-                    <label className={labelClasses}>Description</label>
-                    <textarea
-                      {...register(`experience.${index}.description`)}
-                      className={`${inputClasses} min-h-24`}
-                      placeholder="Describe your responsibilities and impact..."
-                    />
-                  </div>
-                  <div className="col-span-1 md:col-span-2">
-                    <label className={labelClasses}>Achievements (one per line)</label>
-                    <textarea
-                      {...register(`experience.${index}.achievements`)}
-                      className={`${inputClasses} min-h-24`}
-                      onChange={(e) => {
-                        const achievements = e.target.value.split('\n').filter((a) => a.trim());
-                        setValue(`experience.${index}.achievements`, achievements);
-                      }}
-                      value={(watch(`experience.${index}.achievements`) || []).join('\n')}
-                      placeholder="• Increased revenue by 20%&#10;• Led team of 5 engineers"
-                    />
-                  </div>
+                          <div className="pl-6">
+                            <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Position {index + 1}</h4>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 space-y-0">
+                              <div className="col-span-1 md:col-span-2">
+                                <label className={labelClasses}>Job Title *</label>
+                                <input {...register(`experience.${index}.jobTitle`)} className={inputClasses} placeholder="Senior Developer" />
+                                {errors.experience?.[index]?.jobTitle && (
+                                  <p className={errorClasses}>{errors.experience[index]?.jobTitle?.message}</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className={labelClasses}>Company *</label>
+                                <input {...register(`experience.${index}.company`)} className={inputClasses} placeholder="Acme Corp" />
+                                {errors.experience?.[index]?.company && (
+                                  <p className={errorClasses}>{errors.experience[index]?.company?.message}</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className={labelClasses}>Location</label>
+                                <input {...register(`experience.${index}.location`)} className={inputClasses} placeholder="Remote" />
+                              </div>
+                              <div>
+                                <label className={labelClasses}>Start Date *</label>
+                                <input
+                                  {...register(`experience.${index}.startDate`)}
+                                  className={inputClasses}
+                                  placeholder="Jan 2020"
+                                />
+                                {errors.experience?.[index]?.startDate && (
+                                  <p className={errorClasses}>{errors.experience[index]?.startDate?.message}</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className={labelClasses}>End Date *</label>
+                                <input
+                                  {...register(`experience.${index}.endDate`)}
+                                  className={inputClasses}
+                                  placeholder="Present"
+                                />
+                                {errors.experience?.[index]?.endDate && (
+                                  <p className={errorClasses}>{errors.experience[index]?.endDate?.message}</p>
+                                )}
+                              </div>
+                              <div className="col-span-1 md:col-span-2 relative">
+                                <label className={labelClasses}>Description</label>
+                                <textarea
+                                  {...register(`experience.${index}.description`)}
+                                  className={`${inputClasses} min-h-24`}
+                                  placeholder="Describe your responsibilities and impact..."
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = watch(`experience.${index}.description`) || '';
+                                    enhanceText(current, `exp-${index}`, (text) => setValue(`experience.${index}.description`, text));
+                                  }}
+                                  className="absolute bottom-2 right-2 p-1.5 text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors"
+                                  title="Enhance with AI"
+                                >
+                                  {loadingField === `exp-${index}` ? (
+                                    <div className="animate-spin h-4 w-4 border-2 border-purple-600 border-t-transparent rounded-full" />
+                                  ) : (
+                                    <Wand2 size={16} />
+                                  )}
+                                </button>
+                              </div>
+                              <div className="col-span-1 md:col-span-2">
+                                <label className={labelClasses}>Achievements (one per line)</label>
+                                <textarea
+                                  {...register(`experience.${index}.achievements`)}
+                                  className={`${inputClasses} min-h-24`}
+                                  onChange={(e) => {
+                                    const achievements = e.target.value.split('\n').filter((a) => a.trim());
+                                    setValue(`experience.${index}.achievements`, achievements);
+                                  }}
+                                  value={(watch(`experience.${index}.achievements`) || []).join('\n')}
+                                  placeholder="• Increased revenue by 20%&#10;• Led team of 5 engineers"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      appendExperience({
+                        jobTitle: '',
+                        company: '',
+                        location: '',
+                        startDate: '',
+                        endDate: '',
+                        description: '',
+                        achievements: [],
+                      })
+                    }
+                    className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Plus size={16} /> Add Position
+                  </button>
                 </div>
-              </div>
-            ))}
+              )}
+            </Droppable>
+          </Section>
 
-            <button
-              type="button"
-              onClick={() =>
-                appendExperience({
-                  jobTitle: '',
-                  company: '',
-                  location: '',
-                  startDate: '',
-                  endDate: '',
-                  description: '',
-                  achievements: [],
-                })
-              }
-              className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2"
-            >
-              <Plus size={16} /> Add Position
-            </button>
-          </div>
-        </Section>
-
-        {/* Education */}
-        <Section title="Education" icon={GraduationCap}>
-          <div className="space-y-6">
-            {educationFields.map((field, index) => (
-              <div key={field.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative group">
-                <button
-                  type="button"
-                  onClick={() => removeEducation(index)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors p-1"
+          {/* Education */}
+          <Section title="Education" icon={GraduationCap}>
+            <Droppable droppableId="education" type="EDUCATION">
+              {(provided) => (
+                <div
+                   {...provided.droppableProps}
+                   ref={provided.innerRef}
+                   className="space-y-6"
                 >
-                  <Trash2 size={18} />
-                </button>
+                  {educationFields.map((field, index) => (
+                    <Draggable key={field.id} draggableId={field.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                           ref={provided.innerRef}
+                           {...provided.draggableProps}
+                           className={`p-4 border border-gray-200 rounded-lg bg-gray-50 relative group transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500 z-10' : ''}`}
+                        >
+                          <div
+                            {...provided.dragHandleProps}
+                            className="absolute top-4 left-2 text-gray-300 hover:text-gray-600 cursor-grab active:cursor-grabbing p-1"
+                          >
+                            <GripVertical size={20} />
+                          </div>
 
-                <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Education {index + 1}</h4>
+                          <button
+                            type="button"
+                            onClick={() => removeEducation(index)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors p-1"
+                          >
+                            <Trash2 size={18} />
+                          </button>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="col-span-1 md:col-span-2">
-                    <label className={labelClasses}>Degree *</label>
-                    <input {...register(`education.${index}.degree`)} className={inputClasses} placeholder="Bachelor of Science in Computer Science" />
-                    {errors.education?.[index]?.degree && (
-                      <p className={errorClasses}>{errors.education[index]?.degree?.message}</p>
-                    )}
-                  </div>
-                  <div className="col-span-1 md:col-span-2">
-                    <label className={labelClasses}>Institution *</label>
-                    <input {...register(`education.${index}.institution`)} className={inputClasses} placeholder="University of Technology" />
-                    {errors.education?.[index]?.institution && (
-                      <p className={errorClasses}>{errors.education[index]?.institution?.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className={labelClasses}>Location</label>
-                    <input {...register(`education.${index}.location`)} className={inputClasses} />
-                  </div>
-                  <div>
-                    <label className={labelClasses}>Graduation Date *</label>
-                    <input
-                      {...register(`education.${index}.graduationDate`)}
-                      className={inputClasses}
-                      placeholder="May 2019"
-                    />
-                    {errors.education?.[index]?.graduationDate && (
-                      <p className={errorClasses}>{errors.education[index]?.graduationDate?.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className={labelClasses}>GPA</label>
-                    <input {...register(`education.${index}.gpa`)} className={inputClasses} placeholder="3.8/4.0" />
-                  </div>
+                          <div className="pl-6">
+                            <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Education {index + 1}</h4>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="col-span-1 md:col-span-2">
+                                <label className={labelClasses}>Degree *</label>
+                                <input {...register(`education.${index}.degree`)} className={inputClasses} placeholder="Bachelor of Science in Computer Science" />
+                                {errors.education?.[index]?.degree && (
+                                  <p className={errorClasses}>{errors.education[index]?.degree?.message}</p>
+                                )}
+                              </div>
+                              <div className="col-span-1 md:col-span-2">
+                                <label className={labelClasses}>Institution *</label>
+                                <input {...register(`education.${index}.institution`)} className={inputClasses} placeholder="University of Technology" />
+                                {errors.education?.[index]?.institution && (
+                                  <p className={errorClasses}>{errors.education[index]?.institution?.message}</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className={labelClasses}>Location</label>
+                                <input {...register(`education.${index}.location`)} className={inputClasses} />
+                              </div>
+                              <div>
+                                <label className={labelClasses}>Graduation Date *</label>
+                                <input
+                                  {...register(`education.${index}.graduationDate`)}
+                                  className={inputClasses}
+                                  placeholder="May 2019"
+                                />
+                                {errors.education?.[index]?.graduationDate && (
+                                  <p className={errorClasses}>{errors.education[index]?.graduationDate?.message}</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className={labelClasses}>GPA</label>
+                                <input {...register(`education.${index}.gpa`)} className={inputClasses} placeholder="3.8/4.0" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                   {provided.placeholder}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      appendEducation({
+                        degree: '',
+                        institution: '',
+                        location: '',
+                        graduationDate: '',
+                        gpa: '',
+                      })
+                    }
+                    className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Plus size={16} /> Add Education
+                  </button>
                 </div>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={() =>
-                appendEducation({
-                  degree: '',
-                  institution: '',
-                  location: '',
-                  graduationDate: '',
-                  gpa: '',
-                })
-              }
-              className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2"
-            >
-              <Plus size={16} /> Add Education
-            </button>
-          </div>
-        </Section>
+              )}
+            </Droppable>
+          </Section>
+        </DragDropContext>
 
         {/* Skills */}
         <Section title="Skills" icon={Wrench}>

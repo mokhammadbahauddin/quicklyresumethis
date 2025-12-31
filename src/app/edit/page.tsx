@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ResumeEditor from '@/components/ResumeEditor';
-import ResumePreview from '@/components/ResumePreview';
+import ResumePreview, { TemplateType } from '@/components/ResumePreview';
 import { ResumeData } from '@/lib/types';
-import { Download, AlertCircle } from 'lucide-react';
+import { Download, AlertCircle, LayoutTemplate } from 'lucide-react';
 
 export default function EditPage() {
   const router = useRouter();
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+  const [template, setTemplate] = useState<TemplateType>('modern');
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -72,7 +73,7 @@ export default function EditPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ resumeData }),
+        body: JSON.stringify({ resumeData, template }),
       });
 
       if (!response.ok) {
@@ -88,7 +89,7 @@ export default function EditPage() {
         .replace(/[^a-zA-Z0-9]/g, '_')
         .toLowerCase();
       const timestamp = Date.now();
-      a.download = `resume_${sanitizedName}_${timestamp}.pdf`;
+      a.download = `resume_${sanitizedName}_${template}_${timestamp}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
 
@@ -123,26 +124,58 @@ export default function EditPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <button onClick={() => router.push('/')} className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-              QuicklyResumeThis
-             </button>
-             <span className="text-gray-300">|</span>
-             <h1 className="text-lg font-medium text-gray-600">Editor</h1>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+             <div className="flex items-center gap-2">
+               <button onClick={() => router.push('/')} className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                QuicklyResumeThis
+               </button>
+               <span className="text-gray-300 hidden sm:inline">|</span>
+               <h1 className="text-lg font-medium text-gray-600 hidden sm:inline">Editor</h1>
+             </div>
+
+             {/* Mobile Template Switcher */}
+             <div className="md:hidden">
+                <select
+                  value={template}
+                  onChange={(e) => setTemplate(e.target.value as TemplateType)}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                >
+                  <option value="modern">Modern</option>
+                  <option value="minimal">Minimal</option>
+                  <option value="tech">Tech</option>
+                  <option value="creative">Creative</option>
+                  <option value="academic">Academic</option>
+                </select>
+             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            {/* Desktop Template Switcher */}
+            <div className="hidden md:flex items-center bg-gray-100 p-1 rounded-lg mr-2 overflow-x-auto max-w-md no-scrollbar">
+              {['modern', 'minimal', 'tech', 'creative', 'academic'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTemplate(t as TemplateType)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all capitalize whitespace-nowrap ${
+                    template === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
             <button
               onClick={handleStartOver}
-              className="px-4 py-2 text-gray-600 hover:text-red-600 text-sm font-medium transition-colors"
+              className="px-4 py-2 text-gray-600 hover:text-red-600 text-sm font-medium transition-colors hidden sm:block"
             >
               Start Over
             </button>
             <button
               onClick={handleDownloadPDF}
               disabled={isDownloading}
-              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold flex items-center gap-2 transition-all transform hover:scale-105"
+              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold flex items-center gap-2 transition-all transform hover:scale-105 whitespace-nowrap"
             >
               {isDownloading ? (
                 <>
@@ -261,7 +294,7 @@ export default function EditPage() {
                 </div>
                 <div className="p-4 md:p-8 bg-gray-500/10 backdrop-blur-sm max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
                   <div className="transform origin-top transition-transform duration-200">
-                     <ResumePreview data={resumeData} />
+                     <ResumePreview data={resumeData} template={template} />
                   </div>
                 </div>
               </div>
