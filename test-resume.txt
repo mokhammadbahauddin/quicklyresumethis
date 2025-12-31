@@ -1,0 +1,16 @@
+John Doe
+john.doe@email.com | (555) 123-4567 | New York, NY
+
+EXPERIENCE
+Senior Software Engineer at Tech Corp
+January 2020 - Present
+- Led team of 5 engineers
+- Improved performance by 40%
+- Deployed 20+ features
+
+EDUCATION
+Bachelor of Science in Computer Science
+MIT | Graduated 2019 | GPA: 3.8
+
+SKILLS
+JavaScript, TypeScript, React, Node.js, Python
