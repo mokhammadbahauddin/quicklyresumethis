@@ -7,27 +7,24 @@ def verify_templates():
         browser = p.chromium.launch()
         page = browser.new_page()
 
-        # USE PORT 3002
+        # USE PORT 3003
         print("Navigating to Editor...")
-        page.goto("http://localhost:3002")
+        page.goto("http://localhost:3003")
 
         mock_data = {
-            "personalInfo": {"fullName": "Template Tester", "email": "test@test.com", "phone": "123"},
-            "experience": [{"jobTitle": "Tester", "company": "Test Co", "startDate": "2020", "endDate": "2021", "achievements": ["Test"]}],
+            "personalInfo": {"fullName": "Performance Tester", "email": "perf@test.com", "phone": "123"},
+            "experience": [{"jobTitle": "Speedster", "company": "Fast Co", "startDate": "2020", "endDate": "2021", "achievements": ["Optimized everything"]}],
             "education": [],
-            "skills": ["Testing"]
+            "skills": ["Optimization"]
         }
         page.evaluate(f"sessionStorage.setItem('resumeData', JSON.stringify({json.dumps(mock_data)}));")
-        page.goto("http://localhost:3002/edit")
+        page.goto("http://localhost:3003/edit")
         page.wait_for_load_state("networkidle")
 
-        # Just verify page loaded
-        page.screenshot(path="verification/final_pdf_preview.png")
-        print("Captured verification/final_pdf_preview.png")
+        # Verify PDF Viewer
+        page.screenshot(path="verification/final_optimized_preview.png")
+        print("Captured verification/final_optimized_preview.png")
 
-        # Check if PDF Viewer container exists
-        # iframe or embed is usually used by PDFViewer
-        # But @react-pdf/renderer creates an iframe
         if page.query_selector("iframe"):
              print("PDF Viewer iframe detected.")
         else:

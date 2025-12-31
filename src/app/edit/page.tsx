@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import ResumeEditor from '@/components/ResumeEditor';
 import ResumePreview, { TemplateType } from '@/components/ResumePreview';
 import { ResumeData } from '@/lib/types';
-import { Download, AlertCircle, LayoutTemplate } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Download, AlertCircle, LayoutTemplate, RotateCw } from 'lucide-react';
 
 export default function EditPage() {
   const router = useRouter();
@@ -15,6 +16,10 @@ export default function EditPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Debounce the preview update to avoid PDF rendering lag on every keystroke
+  const debouncedResumeData = useDebounce(resumeData, 1200);
+  const isUpdating = resumeData !== debouncedResumeData;
 
   useEffect(() => {
     // Load resume data from sessionStorage
@@ -283,19 +288,30 @@ export default function EditPage() {
             }`}
           >
             <div className="sticky top-24">
-              <div className="bg-gray-800 rounded-xl shadow-xl overflow-hidden border border-gray-700">
+              <div className="bg-gray-800 rounded-xl shadow-xl overflow-hidden border border-gray-700 relative">
                 <div className="p-3 border-b border-gray-700 flex justify-between items-center">
                   <span className="text-gray-300 text-sm font-medium">Live Preview</span>
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                  <div className="flex gap-2 items-center">
+                    {isUpdating && (
+                      <div className="flex items-center gap-1.5 bg-gray-700 px-2 py-0.5 rounded-full animate-fade-in">
+                        <RotateCw className="animate-spin text-gray-400" size={12} />
+                        <span className="text-[10px] text-gray-400">Syncing...</span>
+                      </div>
+                    )}
+                    <div className="flex gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                      <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                      <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                    </div>
                   </div>
                 </div>
-                <div className="p-4 md:p-8 bg-gray-500/10 backdrop-blur-sm max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
-                  <div className="transform origin-top transition-transform duration-200">
-                     <ResumePreview data={resumeData} template={template} />
-                  </div>
+                <div className="p-4 md:p-8 bg-gray-500/10 backdrop-blur-sm max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar relative">
+                   {/* Preview Content */}
+                   <div className={`transform origin-top transition-opacity duration-300 ${isUpdating ? 'opacity-50' : 'opacity-100'}`}>
+                      {debouncedResumeData && (
+                        <ResumePreview data={debouncedResumeData} template={template} />
+                      )}
+                   </div>
                 </div>
               </div>
             </div>
