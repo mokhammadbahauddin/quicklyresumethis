@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ResumeData } from '@/lib/types';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   FileText,
@@ -14,13 +15,11 @@ import {
   Award,
   Wrench,
   ChevronDown,
-  ChevronUp,
   Plus,
   Trash2,
   Save,
   GripVertical,
-  Wand2,
-  Sparkles
+  Wand2
 } from 'lucide-react';
 
 // Zod validation schema
@@ -90,22 +89,37 @@ function Section({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors group"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+          <div className="p-2 bg-blue-50 group-hover:bg-blue-100 rounded-lg text-blue-600 transition-colors">
             <Icon size={20} />
           </div>
           <span className="font-semibold text-gray-800">{title}</span>
         </div>
-        {isOpen ? <ChevronUp size={20} className="text-gray-500" /> : <ChevronDown size={20} className="text-gray-500" />}
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown size={20} className="text-gray-400 group-hover:text-gray-600" />
+        </motion.div>
       </button>
 
-      {isOpen && (
-        <div className="p-5 border-t border-gray-100 animate-slide-down">
-          {children}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="p-5 border-t border-gray-100 bg-white">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -230,19 +244,19 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
     }
   };
 
-  const inputClasses = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-shadow text-sm';
+  const inputClasses = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-shadow text-sm bg-white';
   const labelClasses = 'block text-sm font-semibold text-gray-700 mb-1.5';
   const errorClasses = 'text-red-500 text-xs mt-1 flex items-center gap-1';
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white">
       {/* Auto-save Indicator */}
-      <div className="flex items-center justify-end px-2 mb-4 text-xs text-gray-500">
-        <Save size={12} className="mr-1" />
+      <div className="flex items-center justify-end px-4 pt-2 mb-2 text-xs text-gray-500 font-medium">
+        <Save size={12} className="mr-1.5" />
         {lastSaved ? `Saved at ${lastSaved.toLocaleTimeString()}` : 'Unsaved changes'}
       </div>
 
-      <div className="overflow-y-auto pr-2 pb-20 custom-scrollbar" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+      <div className="overflow-y-auto px-4 pb-20 custom-scrollbar" style={{ maxHeight: 'calc(100vh - 180px)' }}>
 
         {/* Personal Information */}
         <Section title="Personal Information" icon={User} defaultOpen={true}>
@@ -304,7 +318,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
                 const current = watch('summary') || '';
                 enhanceText(current, 'summary', (text) => setValue('summary', text));
               }}
-              className="absolute bottom-6 right-2 p-1.5 text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors group"
+              className="absolute bottom-6 right-2 p-1.5 text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors group border border-purple-100 shadow-sm"
               title="Enhance with AI"
             >
               {loadingField === 'summary' ? (
@@ -312,7 +326,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
               ) : (
                 <div className="flex items-center gap-1">
                    <Wand2 size={16} />
-                   <span className="text-xs font-medium max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap">Magic Fix</span>
+                   <span className="text-xs font-medium max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap pl-0 group-hover:pl-1">Magic Fix</span>
                 </div>
               )}
             </button>
@@ -345,7 +359,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`p-4 border border-gray-200 rounded-lg bg-gray-50 relative group transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500 z-10' : ''}`}
+                          className={`p-4 border border-gray-200 rounded-lg bg-gray-50 relative group transition-all duration-200 ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500 z-10 rotate-1' : 'hover:border-blue-200'}`}
                         >
                           <div
                             {...provided.dragHandleProps}
@@ -420,7 +434,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
                                     const current = watch(`experience.${index}.description`) || '';
                                     enhanceText(current, `exp-${index}`, (text) => setValue(`experience.${index}.description`, text));
                                   }}
-                                  className="absolute bottom-2 right-2 p-1.5 text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors"
+                                  className="absolute bottom-2 right-2 p-1.5 text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors border border-purple-100 shadow-sm"
                                   title="Enhance with AI"
                                 >
                                   {loadingField === `exp-${index}` ? (
@@ -464,9 +478,9 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
                         achievements: [],
                       })
                     }
-                    className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2 group"
                   >
-                    <Plus size={16} /> Add Position
+                    <Plus size={16} className="group-hover:scale-110 transition-transform" /> Add Position
                   </button>
                 </div>
               )}
@@ -488,7 +502,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
                         <div
                            ref={provided.innerRef}
                            {...provided.draggableProps}
-                           className={`p-4 border border-gray-200 rounded-lg bg-gray-50 relative group transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500 z-10' : ''}`}
+                           className={`p-4 border border-gray-200 rounded-lg bg-gray-50 relative group transition-all duration-200 ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500 z-10 rotate-1' : 'hover:border-blue-200'}`}
                         >
                           <div
                             {...provided.dragHandleProps}
@@ -561,9 +575,9 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
                         gpa: '',
                       })
                     }
-                    className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2 group"
                   >
-                    <Plus size={16} /> Add Education
+                    <Plus size={16} className="group-hover:scale-110 transition-transform" /> Add Education
                   </button>
                 </div>
               )}
@@ -598,7 +612,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
               {skills.map((skill, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 text-blue-700 rounded-full text-sm font-medium shadow-sm animate-fade-in"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 text-blue-700 rounded-full text-sm font-medium shadow-sm animate-fade-in group hover:border-blue-400 transition-colors"
                 >
                   {skill}
                   <button
@@ -618,7 +632,7 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
         <Section title="Certifications" icon={Award}>
           <div className="space-y-6">
             {certificationFields.map((field, index) => (
-              <div key={field.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative group">
+              <div key={field.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative group transition-all duration-200 hover:border-blue-200">
                 <button
                   type="button"
                   onClick={() => removeCertification(index)}
@@ -665,9 +679,9 @@ export default function ResumeEditor({ initialData, onChange }: ResumeEditorProp
                   date: '',
                 })
               }
-              className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 bg-white border-2 border-dashed border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-semibold flex items-center justify-center gap-2 group"
             >
-              <Plus size={16} /> Add Certification
+              <Plus size={16} className="group-hover:scale-110 transition-transform" /> Add Certification
             </button>
           </div>
         </Section>
