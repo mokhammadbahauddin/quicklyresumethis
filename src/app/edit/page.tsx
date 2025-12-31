@@ -1,28 +1,53 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ResumeEditor from '@/components/ResumeEditor';
 import ResumePreview, { TemplateType } from '@/components/ResumePreview';
 import { ResumeData } from '@/lib/types';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Download, AlertCircle, LayoutTemplate, RotateCw } from 'lucide-react';
+import { compressData, decompressData } from '@/lib/urlState';
+import { Download, AlertCircle, Share2, Check, Sparkles } from 'lucide-react';
 
+// Wrapper for Suspense (required for useSearchParams)
 export default function EditPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <EditPageContent />
+    </Suspense>
+  );
+}
+
+function EditPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [template, setTemplate] = useState<TemplateType>('modern');
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isPremium, setIsPremium] = useState(false); // Watermark toggle
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   // Debounce the preview update to avoid PDF rendering lag on every keystroke
   const debouncedResumeData = useDebounce(resumeData, 1200);
   const isUpdating = resumeData !== debouncedResumeData;
 
   useEffect(() => {
-    // Load resume data from sessionStorage
+    // Check for shared data in URL first
+    const sharedData = searchParams.get('data');
+    if (sharedData) {
+      const decompressed = decompressData(sharedData);
+      if (decompressed) {
+        setResumeData(decompressed);
+        // Clear URL to clean up but keep state
+        window.history.replaceState({}, '', '/edit');
+        return;
+      }
+    }
+
+    // Load resume data from sessionStorage if no URL data
     const storedData = sessionStorage.getItem('resumeData');
     if (!storedData) {
       router.push('/');
@@ -36,13 +61,25 @@ export default function EditPage() {
       console.error('Error loading resume data:', err);
       router.push('/');
     }
-  }, [router]);
+  }, [router, searchParams]);
 
   const handleDataChange = (newData: ResumeData) => {
     setResumeData(newData);
   };
 
+  const handleShare = () => {
+    if (!resumeData) return;
+    const compressed = compressData(resumeData);
+    const url = `${window.location.origin}/edit?data=${compressed}`;
+    navigator.clipboard.writeText(url);
+    setShareUrl(url);
+    setTimeout(() => setShareUrl(null), 3000);
+  };
+
   const checkDownloadLimit = () => {
+    // If premium is enabled (via our fake upgrade), bypass check
+    if (isPremium) return true;
+
     const downloads = parseInt(localStorage.getItem('downloadCount') || '0');
     const lastDownloadMonth = localStorage.getItem('lastDownloadMonth');
     const currentMonth = new Date().getMonth().toString();
@@ -78,7 +115,7 @@ export default function EditPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ resumeData, template }),
+        body: JSON.stringify({ resumeData, template, isPremium }),
       });
 
       if (!response.ok) {
@@ -98,9 +135,11 @@ export default function EditPage() {
       a.click();
       window.URL.revokeObjectURL(url);
 
-      // Increment download count
-      const currentCount = parseInt(localStorage.getItem('downloadCount') || '0');
-      localStorage.setItem('downloadCount', (currentCount + 1).toString());
+      // Increment download count if not premium
+      if (!isPremium) {
+        const currentCount = parseInt(localStorage.getItem('downloadCount') || '0');
+        localStorage.setItem('downloadCount', (currentCount + 1).toString());
+      }
 
     } catch (err) {
       console.error('PDF generation error:', err);
@@ -115,6 +154,13 @@ export default function EditPage() {
       sessionStorage.removeItem('resumeData');
       router.push('/');
     }
+  };
+
+  const handleUpgrade = () => {
+    // Mock payment success
+    setIsPremium(true);
+    setShowUpgradeModal(false);
+    alert('Upgrade successful! Watermark removed and unlimited downloads enabled.');
   };
 
   if (!resumeData) {
@@ -172,6 +218,15 @@ export default function EditPage() {
             </div>
 
             <button
+              onClick={handleShare}
+              className="px-4 py-2 text-gray-600 hover:text-blue-600 text-sm font-medium transition-colors flex items-center gap-2"
+              title="Share Link"
+            >
+              {shareUrl ? <Check size={18} className="text-green-600" /> : <Share2 size={18} />}
+              <span className="hidden sm:inline">{shareUrl ? 'Copied!' : 'Share'}</span>
+            </button>
+
+            <button
               onClick={handleStartOver}
               className="px-4 py-2 text-gray-600 hover:text-red-600 text-sm font-medium transition-colors hidden sm:block"
             >
@@ -217,9 +272,10 @@ export default function EditPage() {
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => alert('Redirecting to payment... (Mock)')}
-                className="w-full py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-bold rounded-xl hover:shadow-lg transition-all"
+                onClick={handleUpgrade}
+                className="w-full py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
               >
+                <Sparkles size={20} />
                 Upgrade for $9.99/mo
               </button>
               <button
@@ -292,24 +348,31 @@ export default function EditPage() {
                 <div className="p-3 border-b border-gray-700 flex justify-between items-center">
                   <span className="text-gray-300 text-sm font-medium">Live Preview</span>
                   <div className="flex gap-2 items-center">
+                    {/* Watermark Toggle (Mock Upgrade Trigger) */}
+                    <button
+                      onClick={() => !isPremium && setShowUpgradeModal(true)}
+                      className={`text-xs px-2 py-1 rounded-md transition-colors ${
+                        isPremium
+                          ? 'bg-green-500/20 text-green-400 cursor-default'
+                          : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+                      }`}
+                    >
+                      {isPremium ? 'Premium Active' : 'Remove Watermark'}
+                    </button>
+
                     {isUpdating && (
                       <div className="flex items-center gap-1.5 bg-gray-700 px-2 py-0.5 rounded-full animate-fade-in">
                         <RotateCw className="animate-spin text-gray-400" size={12} />
                         <span className="text-[10px] text-gray-400">Syncing...</span>
                       </div>
                     )}
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                      <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                      <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                    </div>
                   </div>
                 </div>
                 <div className="p-4 md:p-8 bg-gray-500/10 backdrop-blur-sm max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar relative">
                    {/* Preview Content */}
                    <div className={`transform origin-top transition-opacity duration-300 ${isUpdating ? 'opacity-50' : 'opacity-100'}`}>
                       {debouncedResumeData && (
-                        <ResumePreview data={debouncedResumeData} template={template} />
+                        <ResumePreview data={debouncedResumeData} template={template} isPremium={isPremium} />
                       )}
                    </div>
                 </div>

@@ -5,7 +5,7 @@ import { ResumeData } from './types';
 // Helvetica, Times-Roman, Courier are standard.
 
 const stylesModern = StyleSheet.create({
-  page: { padding: 40, fontSize: 12, fontFamily: 'Helvetica', lineHeight: 1.5 },
+  page: { padding: 40, fontSize: 12, fontFamily: 'Helvetica', lineHeight: 1.5, position: 'relative' },
   header: { textAlign: 'center', marginBottom: 20 },
   name: { fontSize: 32, fontFamily: 'Helvetica-Bold', marginBottom: 8, color: '#111827' },
   contact: { fontSize: 10, color: '#6b7280' },
@@ -20,7 +20,7 @@ const stylesModern = StyleSheet.create({
 });
 
 const stylesMinimal = StyleSheet.create({
-  page: { padding: 48, fontSize: 11, fontFamily: 'Times-Roman', lineHeight: 1.4, color: '#000' },
+  page: { padding: 48, fontSize: 11, fontFamily: 'Times-Roman', lineHeight: 1.4, color: '#000', position: 'relative' },
   header: { borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 16, marginBottom: 24 },
   name: { fontSize: 28, fontFamily: 'Times-Bold', marginBottom: 6 },
   contact: { fontSize: 10, color: '#333', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -35,7 +35,7 @@ const stylesMinimal = StyleSheet.create({
 });
 
 const stylesTech = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, fontFamily: 'Courier', backgroundColor: '#f8fafc', color: '#334155' },
+  page: { padding: 40, fontSize: 10, fontFamily: 'Courier', backgroundColor: '#f8fafc', color: '#334155', position: 'relative' },
   header: { marginBottom: 24, padding: 16, backgroundColor: '#1e293b', color: '#f1f5f9' },
   name: { fontSize: 24, fontFamily: 'Courier-Bold', color: '#60a5fa', marginBottom: 8 },
   contact: { fontSize: 9, color: '#cbd5e1' },
@@ -49,7 +49,7 @@ const stylesTech = StyleSheet.create({
 });
 
 const stylesCreative = StyleSheet.create({
-  page: { fontSize: 11, fontFamily: 'Helvetica', color: '#333' },
+  page: { fontSize: 11, fontFamily: 'Helvetica', color: '#333', position: 'relative' },
   header: { backgroundColor: '#7c3aed', padding: 30, color: 'white', marginBottom: 20 },
   name: { fontSize: 30, fontFamily: 'Helvetica-Bold', marginBottom: 5 },
   contact: { fontSize: 10, opacity: 0.9, marginBottom: 10 },
@@ -66,7 +66,7 @@ const stylesCreative = StyleSheet.create({
 });
 
 const stylesAcademic = StyleSheet.create({
-  page: { padding: 50, fontSize: 11, fontFamily: 'Times-Roman', color: '#000' },
+  page: { padding: 50, fontSize: 11, fontFamily: 'Times-Roman', color: '#000', position: 'relative' },
   header: { textAlign: 'center', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 10, marginBottom: 20 },
   name: { fontSize: 24, fontFamily: 'Times-Bold', marginBottom: 5, textTransform: 'uppercase' },
   contact: { fontSize: 10, marginBottom: 2 },
@@ -78,12 +78,21 @@ const stylesAcademic = StyleSheet.create({
   body: { fontSize: 11, lineHeight: 1.4, textAlign: 'justify' },
 });
 
+const Watermark = () => (
+  <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center', opacity: 0.5 }}>
+    <Text style={{ fontSize: 9, color: '#6b7280', fontFamily: 'Helvetica' }}>
+      Built with QuicklyResumeThis • Get Pro to remove this
+    </Text>
+  </View>
+);
+
 interface ResumePDFDocumentProps {
   data: ResumeData;
   template?: 'modern' | 'minimal' | 'tech' | 'creative' | 'academic';
+  isPremium?: boolean;
 }
 
-export function ResumePDFDocument({ data, template = 'modern' }: ResumePDFDocumentProps) {
+export function ResumePDFDocument({ data, template = 'modern', isPremium = false }: ResumePDFDocumentProps) {
   const { personalInfo, summary, experience, education, skills, certifications } = data;
 
   const RenderModern = () => (
@@ -143,6 +152,7 @@ export function ResumePDFDocument({ data, template = 'modern' }: ResumePDFDocume
           ))}
         </View>
       )}
+      {!isPremium && <Watermark />}
     </Page>
   );
 
@@ -199,6 +209,7 @@ export function ResumePDFDocument({ data, template = 'modern' }: ResumePDFDocume
           <Text style={stylesMinimal.body}>{skills.join(' • ')}</Text>
         </View>
       )}
+      {!isPremium && <Watermark />}
     </Page>
   );
 
@@ -277,6 +288,7 @@ export function ResumePDFDocument({ data, template = 'modern' }: ResumePDFDocume
           )}
         </View>
       </View>
+      {!isPremium && <Watermark />}
     </Page>
   );
 
@@ -341,6 +353,7 @@ export function ResumePDFDocument({ data, template = 'modern' }: ResumePDFDocume
           )}
         </View>
       </View>
+      {!isPremium && <Watermark />}
     </Page>
   );
 
@@ -406,6 +419,7 @@ export function ResumePDFDocument({ data, template = 'modern' }: ResumePDFDocume
           <Text style={stylesAcademic.body}>{skills.join(' • ')}</Text>
         </View>
       )}
+      {!isPremium && <Watermark />}
     </Page>
   );
 

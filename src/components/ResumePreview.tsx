@@ -25,9 +25,10 @@ const PDFViewer = dynamic(
 interface ResumePreviewProps {
   data: ResumeData;
   template: TemplateType;
+  isPremium?: boolean;
 }
 
-export default function ResumePreview({ data, template }: ResumePreviewProps) {
+export default function ResumePreview({ data, template, isPremium = false }: ResumePreviewProps) {
   return (
     <div className="w-full h-full flex justify-center items-start overflow-hidden rounded-xl">
       <PDFViewer
@@ -38,7 +39,7 @@ export default function ResumePreview({ data, template }: ResumePreviewProps) {
              height: '100%',
         }}
       >
-        <ResumePDFDocument data={data} template={template} />
+        <ResumePDFDocument data={data} template={template} isPremium={isPremium} />
       </PDFViewer>
     </div>
   );
