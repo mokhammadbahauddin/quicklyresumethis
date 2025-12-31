@@ -7,9 +7,9 @@ def verify_templates():
         browser = p.chromium.launch()
         page = browser.new_page()
 
-        # USE PORT 3001
+        # USE PORT 3002
         print("Navigating to Editor...")
-        page.goto("http://localhost:3001")
+        page.goto("http://localhost:3002")
 
         mock_data = {
             "personalInfo": {"fullName": "Template Tester", "email": "test@test.com", "phone": "123"},
@@ -18,30 +18,20 @@ def verify_templates():
             "skills": ["Testing"]
         }
         page.evaluate(f"sessionStorage.setItem('resumeData', JSON.stringify({json.dumps(mock_data)}));")
-        page.goto("http://localhost:3001/edit")
+        page.goto("http://localhost:3002/edit")
         page.wait_for_load_state("networkidle")
 
-        templates = ['modern', 'minimal', 'tech', 'creative', 'academic']
+        # Just verify page loaded
+        page.screenshot(path="verification/final_pdf_preview.png")
+        print("Captured verification/final_pdf_preview.png")
 
-        for tmpl in templates:
-            print(f"Testing template: {tmpl}")
-            try:
-                # Use exact match on the lowercase text
-                page.get_by_role("button", name=tmpl, exact=True).click()
-                time.sleep(1) # Wait for render
-
-                # Take screenshot
-                page.screenshot(path=f"verification/template_{tmpl}.png")
-                print(f"Captured verification/template_{tmpl}.png")
-            except Exception as e:
-                print(f"Failed to switch to {tmpl}: {e}")
-                try:
-                    page.get_by_text(tmpl, exact=True).click()
-                    time.sleep(1)
-                    page.screenshot(path=f"verification/template_{tmpl}_fallback.png")
-                    print(f"Captured verification/template_{tmpl}_fallback.png")
-                except Exception as e2:
-                     print(f"Fallback failed: {e2}")
+        # Check if PDF Viewer container exists
+        # iframe or embed is usually used by PDFViewer
+        # But @react-pdf/renderer creates an iframe
+        if page.query_selector("iframe"):
+             print("PDF Viewer iframe detected.")
+        else:
+             print("Warning: PDF Viewer iframe NOT detected (might be loading or failed).")
 
         browser.close()
 

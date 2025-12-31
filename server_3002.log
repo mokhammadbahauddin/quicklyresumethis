@@ -1,0 +1,41 @@
+
+> compyle-next@0.1.0 start
+> next start -p 3002
+
+   ▲ Next.js 16.0.1
+   - Local:        http://localhost:3002
+   - Network:      http://192.168.0.2:3002
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Ready in 739ms
+Warning: Cannot polyfill `DOMMatrix`, rendering may be broken: "Error: Cannot find module 'canvas'
+Require stack:
+- /app/node_modules/pdfjs-dist/legacy/build/pdf.js
+- /app/.next/server/chunks/[root-of-the-server]__46c72d41._.js
+- /app/.next/server/chunks/[turbopack]_runtime.js
+- /app/.next/server/app/api/enhance-text/route.js
+- /app/node_modules/next/dist/server/require.js
+- /app/node_modules/next/dist/server/load-components.js
+- /app/node_modules/next/dist/build/utils.js
+- /app/node_modules/next/dist/build/swc/options.js
+- /app/node_modules/next/dist/build/swc/index.js
+- /app/node_modules/next/dist/build/next-config-ts/transpile-config.js
+- /app/node_modules/next/dist/server/config.js
+- /app/node_modules/next/dist/cli/next-test.js
+- /app/node_modules/next/dist/bin/next".
+Warning: Cannot polyfill `Path2D`, rendering may be broken: "Error: Cannot find module 'canvas'
+Require stack:
+- /app/node_modules/pdfjs-dist/legacy/build/pdf.js
+- /app/.next/server/chunks/[root-of-the-server]__46c72d41._.js
+- /app/.next/server/chunks/[turbopack]_runtime.js
+- /app/.next/server/app/api/enhance-text/route.js
+- /app/node_modules/next/dist/server/require.js
+- /app/node_modules/next/dist/server/load-components.js
+- /app/node_modules/next/dist/build/utils.js
+- /app/node_modules/next/dist/build/swc/options.js
+- /app/node_modules/next/dist/build/swc/index.js
+- /app/node_modules/next/dist/build/next-config-ts/transpile-config.js
+- /app/node_modules/next/dist/server/config.js
+- /app/node_modules/next/dist/cli/next-test.js
+- /app/node_modules/next/dist/bin/next".
