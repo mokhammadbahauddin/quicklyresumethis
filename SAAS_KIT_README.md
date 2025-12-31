@@ -13,7 +13,7 @@ Most resume builders use HTML for the preview and PDF for the download, causing 
 *   **AI Integration Ready:** "Magic Fix" button ready for your OpenAI API key. (Includes a smart rule-based fallback).
 *   **Monetization Logic:** Built-in download limit tracking (3 free downloads/month) with an "Upgrade" modal trigger.
 *   **Drag-and-Drop Editor:** Reorder experience/education sections instantly.
-*   **Production Ready:** TypeScript, Tailwind, Next.js 16.
+*   **Static Export Ready:** Runs entirely in the browser (Client-Side). Host for free on GitHub Pages or Vercel.
 
 ---
 
@@ -34,22 +34,25 @@ npm run dev
 
 Visit `http://localhost:3000` to see your app in action.
 
-### 2. Configuring AI (The "Brain")
+### 2. Hosting (Zero Cost)
 
-The AI endpoint is located at `src/app/api/enhance-text/route.ts`.
-It currently uses a smart regex-based enhancer (turning "worked on" into "Orchestrated").
+This app is architected as a **Static Site** (SPA). It does not require a Node.js server.
+
+**GitHub Pages:**
+1.  Push your code to GitHub.
+2.  Go to Settings > Pages > Build and deployment > Source: **GitHub Actions**.
+3.  The included `.github/workflows/deploy.yml` will automatically build and deploy your site.
+
+**Vercel / Netlify:**
+Just import the repo. It detects `next.config.ts` and deploys automatically.
+
+### 3. Configuring AI (The "Brain")
+
+The AI logic is located in `src/lib/clientAI.ts`. It currently uses a smart regex-based enhancer.
 
 **To enable Real OpenAI:**
-1.  Get an API Key from [platform.openai.com](https://platform.openai.com).
-2.  Uncomment the OpenAI code block in `src/app/api/enhance-text/route.ts`.
-3.  Add `OPENAI_API_KEY` to your `.env` file.
-
-### 3. Deployment (Vercel)
-
-1.  Push your code to GitHub.
-2.  Import the repository in Vercel.
-3.  Add environment variables if you enabled OpenAI.
-4.  Deploy.
+Since this is a client-side app, calling OpenAI directly exposes your API Key.
+**Recommended:** Create a small proxy server (Cloudflare Worker) to handle the API call and update `src/lib/clientAI.ts` to fetch from there.
 
 ---
 
@@ -60,14 +63,13 @@ This kit gives you the foundation. Here is your path to profitability:
 1.  **Phase 1: Fidelity (Done ✅)**
     *   We switched to `@react-pdf` for the live preview. No more layout bugs.
 
-2.  **Phase 2: Persistence (Next Step)**
-    *   Add **Clerk** for Authentication.
-    *   Add **Supabase** to save resume JSON to the cloud.
-    *   *Why?* Users who can save their work return. Returning users pay.
+2.  **Phase 2: Persistence (Done ✅)**
+    *   Added **URL Sharing**. Users can "Save" their resume by bookmarking the unique link (compressed state).
 
-3.  **Phase 3: Payments**
-    *   Connect the "Upgrade" button to **Stripe Checkout**.
-    *   Charge $9/month for "Unlimited AI" + "Cloud Save".
+3.  **Phase 3: Payments (Done ✅)**
+    *   Added **Watermarking**. Free PDFs have a footer.
+    *   Added "Remove Watermark" flow (Mocked).
+    *   *Next Step:* Connect the "Upgrade" button to a Stripe Payment Link.
 
 ---
 

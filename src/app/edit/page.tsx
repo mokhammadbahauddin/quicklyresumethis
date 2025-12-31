@@ -7,7 +7,7 @@ import ResumePreview, { TemplateType } from '@/components/ResumePreview';
 import { ResumeData } from '@/lib/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { compressData, decompressData } from '@/lib/urlState';
-import { Download, AlertCircle, Share2, Check, Sparkles } from 'lucide-react';
+import { Download, AlertCircle, Share2, Check, Sparkles, RotateCw } from 'lucide-react';
 
 // Wrapper for Suspense (required for useSearchParams)
 export default function EditPage() {
@@ -110,20 +110,14 @@ function EditPageContent() {
     setIsDownloading(true);
 
     try {
-      const response = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ resumeData, template, isPremium }),
-      });
+      // Client-Side PDF Generation for Static Export compatibility
+      const { pdf } = await import('@react-pdf/renderer');
+      const { ResumePDFDocument } = await import('@/lib/pdfGenerator');
 
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
-      }
+      const blob = await pdf(
+        <ResumePDFDocument data={resumeData} template={template} isPremium={isPremium} />
+      ).toBlob();
 
-      // Create download
-      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

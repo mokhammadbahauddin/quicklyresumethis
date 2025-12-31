@@ -124,6 +124,8 @@ function Section({
   );
 }
 
+import { enhanceTextClient } from '@/lib/clientAI';
+
 // AI Enhancement Hook
 const useAIEnhancer = () => {
   const [loadingField, setLoadingField] = useState<string | null>(null);
@@ -133,15 +135,10 @@ const useAIEnhancer = () => {
 
     setLoadingField(fieldId);
     try {
-      const res = await fetch('/api/enhance-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await res.json();
-      if (data.success && data.enhancedText) {
-        onComplete(data.enhancedText);
+      // Use Client-Side AI to support Static Export
+      const enhanced = await enhanceTextClient(text);
+      if (enhanced) {
+        onComplete(enhanced);
       }
     } catch (error) {
       console.error('AI Enhance failed:', error);
