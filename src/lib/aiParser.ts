@@ -1,18 +1,22 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ResumeData } from './types';
 
 /**
- * Parse resume text using Claude AI to extract structured data
+ * Parse resume text using Google Gemini to extract structured data
  */
-export async function parseResumeWithClaude(rawText: string): Promise<ResumeData> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+export async function parseResumeWithGemini(rawText: string): Promise<ResumeData> {
+  const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY not configured');
+    throw new Error('GEMINI_API_KEY not configured');
   }
 
-  const anthropic = new Anthropic({
-    apiKey,
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    generationConfig: {
+      responseMimeType: "application/json",
+    },
   });
 
   const prompt = `You are a resume parsing expert. Extract structured information from the following resume text.
@@ -70,34 +74,14 @@ Resume text:
 ${rawText}`;
 
   try {
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      temperature: 0,
-      system: 'You are a helpful assistant that extracts resume data into structured JSON format.',
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    });
-
-    // Extract text content from the response
-    const responseText = message.content
-      .filter((block) => block.type === 'text')
-      .map((block) => (block as { type: 'text'; text: string }).text)
-      .join('');
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
 
     // Try to parse JSON from the response
     let parsedData: ResumeData;
 
     try {
-      // Remove markdown code blocks if present
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      const jsonString = jsonMatch ? jsonMatch[1] : responseText;
-
-      parsedData = JSON.parse(jsonString.trim());
+      parsedData = JSON.parse(responseText);
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
       console.error('Response text:', responseText);
@@ -111,7 +95,7 @@ ${rawText}`;
 
     return parsedData;
   } catch (error) {
-    console.error('Claude API error:', error);
+    console.error('Gemini API error:', error);
     if (error instanceof Error) {
       throw new Error(`AI parsing failed: ${error.message}`);
     }

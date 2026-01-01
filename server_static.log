@@ -1,0 +1,23 @@
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/26632c4307fc5436.css HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/media/797e433ab948586e-s.p.dbea232f.woff2 HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/media/caa3a2e1cccd8315-s.p.853070df.woff2 HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/07f9c55ce6784810.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/50a8801ac0861927.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/b13194cbac77d1ff.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/112f346e31f991df.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/94bef4064edcfc5d.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/turbopack-91cdd36e49b220e9.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/82ea7df39657a777.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/6ea5e584b99b4956.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/42879de7b8087bc9.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/d26efb3cd9afc41c.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /_next/static/chunks/981219ed81ecb8c9.js HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:49] code 404, message File not found
+127.0.0.1 - - [01/Jan/2026 08:45:49] "GET /grid.svg HTTP/1.1" 404 -
+127.0.0.1 - - [01/Jan/2026 08:45:50] "GET /login HTTP/1.1" 301 -
+127.0.0.1 - - [01/Jan/2026 08:45:50] "GET /login/ HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:50] "GET /signup HTTP/1.1" 301 -
+127.0.0.1 - - [01/Jan/2026 08:45:50] "GET /signup/ HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jan/2026 08:45:51] "GET /dashboard HTTP/1.1" 301 -
+127.0.0.1 - - [01/Jan/2026 08:45:51] "GET /dashboard/ HTTP/1.1" 200 -

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractTextFromFile } from '@/lib/fileProcessors';
-import { parseResumeWithClaude } from '@/lib/aiParser';
+import { parseResumeWithGemini } from '@/lib/aiParser';
 import { ApiResponse, ResumeData } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -83,21 +83,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Check API key configuration
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('ANTHROPIC_API_KEY not configured');
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured');
       return NextResponse.json<ApiResponse<null>>(
         {
           success: false,
-          error: 'API key not configured. Please add ANTHROPIC_API_KEY to your .env.local file. Get your key from console.anthropic.com',
+          error: 'API key not configured. Please add GEMINI_API_KEY to your .env.local file.',
         },
         { status: 500 }
       );
     }
 
-    // Parse resume data using Claude AI
+    // Parse resume data using Gemini AI
     let resumeData: ResumeData;
     try {
-      resumeData = await parseResumeWithClaude(extractedText);
+      resumeData = await parseResumeWithGemini(extractedText);
     } catch (error) {
       console.error('AI parsing error:', error);
 
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json<ApiResponse<null>>(
           {
             success: false,
-            error: 'Invalid API key. Please check your ANTHROPIC_API_KEY in .env.local. Get a valid key from console.anthropic.com',
+            error: 'Invalid API key. Please check your GEMINI_API_KEY in .env.local.',
           },
           { status: 401 }
         );
