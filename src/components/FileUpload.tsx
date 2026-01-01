@@ -6,6 +6,7 @@ import { useDropzone } from 'react-dropzone';
 import { ApiResponse, ResumeData } from '@/lib/types';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from './Toast';
+import { useAuth } from '@/context/AuthContext';
 
 type UploadStage = 'idle' | 'uploading' | 'extracting' | 'processing' | 'finalizing';
 
@@ -28,6 +29,7 @@ const STAGE_PROGRESS = {
 export default function FileUpload() {
   const router = useRouter();
   const { toasts, removeToast, error: showError, success: showSuccess } = useToast();
+  const { user, loading } = useAuth();
 
   const [stage, setStage] = useState<UploadStage>('idle');
   const [progress, setProgress] = useState(0);
@@ -37,13 +39,34 @@ export default function FileUpload() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
+    // Auth Check
+    if (!loading && !user) {
+        // Option: Allow 1 guest upload, or force login.
+        // For "God Plan" monetization, forcing login is better for retention.
+        router.push('/signup');
+        return;
+    }
+
+    // Tier/Credits Check
+    if (user) {
+        // @ts-ignore
+        const tier = user.prefs?.tier || 'free';
+        // @ts-ignore
+        const credits = user.prefs?.credits !== undefined ? user.prefs.credits : 3; // Default 3 if not set
+
+        if (tier === 'free' && credits <= 0) {
+            showError("You have reached your free limit. Please upgrade to Pro.");
+            // Ideally show upgrade modal here
+            return;
+        }
+    }
+
     const file = acceptedFiles[0];
     setFileName(file.name);
     setError(null);
     setStage('uploading');
     setProgress(0);
 
-    // Client-side validation
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
       const msg = 'File must be under 10MB. Try compressing your file or use a different format.';
@@ -54,13 +77,14 @@ export default function FileUpload() {
     }
 
     try {
-      // Simulate progress through stages
       setProgress(STAGE_PROGRESS.uploading);
 
       const formData = new FormData();
       formData.append('file', file);
+      if (user) {
+          formData.append('userId', user.$id);
+      }
 
-      // Move to extracting stage
       setTimeout(() => {
         setStage('extracting');
         setProgress(STAGE_PROGRESS.extracting);
@@ -71,7 +95,6 @@ export default function FileUpload() {
         body: formData,
       });
 
-      // Move to processing stage
       setStage('processing');
       setProgress(STAGE_PROGRESS.processing);
 
@@ -79,16 +102,6 @@ export default function FileUpload() {
 
       if (!response.ok || !result.success) {
         let errorMessage = result.error || 'Something went wrong processing your resume.';
-
-        // Enhanced error messages based on status
-        if (response.status === 400) {
-          errorMessage = result.error || 'Could not read your file. Try a different format or ensure the file contains text.';
-        } else if (response.status === 500) {
-          errorMessage = 'Server error processing your resume. Our team has been notified. Please try again.';
-        } else if (response.status === 429) {
-          errorMessage = 'Too many requests. Please wait a moment and try again.';
-        }
-
         setError(errorMessage);
         showError(errorMessage);
         setStage('idle');
@@ -96,15 +109,11 @@ export default function FileUpload() {
         return;
       }
 
-      // Finalizing
       setStage('finalizing');
       setProgress(STAGE_PROGRESS.finalizing);
 
-      // Store parsed data in sessionStorage
       if (result.data) {
         sessionStorage.setItem('resumeData', JSON.stringify(result.data));
-
-        // Complete
         setProgress(100);
         showSuccess('Resume processed successfully! Redirecting...');
 
@@ -120,7 +129,7 @@ export default function FileUpload() {
       setStage('idle');
       setProgress(0);
     }
-  }, [router, showError, showSuccess]);
+  }, [router, showError, showSuccess, user, loading]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

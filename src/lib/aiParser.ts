@@ -1,120 +1,83 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { ResumeData } from './types';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ResumeData } from "./types";
 
-/**
- * Parse resume text using Claude AI to extract structured data
- */
-export async function parseResumeWithClaude(rawText: string): Promise<ResumeData> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY;
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY not configured');
+export async function parseResumeWithGemini(text: string): Promise<ResumeData> {
+  if (!genAI) {
+    throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  const anthropic = new Anthropic({
-    apiKey,
-  });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const prompt = `You are a resume parsing expert. Extract structured information from the following resume text.
+  const prompt = `
+    You are an expert resume parser. Extract the following information from the resume text below and return it as a valid JSON object matching this structure:
 
-Return ONLY valid JSON with this exact structure:
-{
-  "personalInfo": {
-    "fullName": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "linkedin": "",
-    "website": ""
-  },
-  "summary": "",
-  "experience": [
-    {
-      "jobTitle": "",
-      "company": "",
-      "location": "",
-      "startDate": "",
-      "endDate": "",
-      "description": "",
-      "achievements": []
+    interface ResumeData {
+      personalInfo: {
+        fullName: string;
+        email: string;
+        phone: string;
+        location: string;
+        linkedin?: string;
+        website?: string;
+      };
+      summary?: string;
+      experience: {
+        jobTitle: string;
+        company: string;
+        location?: string;
+        startDate: string;
+        endDate: string;
+        description: string;
+        achievements: string[];
+      }[];
+      education: {
+        degree: string;
+        institution: string;
+        location?: string;
+        graduationDate: string;
+        gpa?: string;
+      }[];
+      skills: string[];
+      certifications?: {
+        name: string;
+        issuer: string;
+        date?: string;
+      }[];
     }
-  ],
-  "education": [
-    {
-      "degree": "",
-      "institution": "",
-      "location": "",
-      "graduationDate": "",
-      "gpa": ""
-    }
-  ],
-  "skills": [],
-  "certifications": [
-    {
-      "name": "",
-      "issuer": "",
-      "date": ""
-    }
-  ]
-}
 
-Rules:
-- Extract all information accurately
-- Use empty strings for missing fields
-- For dates, use format: "Month YYYY" (e.g., "January 2023")
-- If currently employed, use "Present" for endDate
-- Achievements should be bullet points from job descriptions
-- Skills should be individual items (not grouped)
+    Resume Text:
+    ${text}
 
-Resume text:
-${rawText}`;
+    Return ONLY the JSON. Do not include markdown formatting like \`\`\`json.
+  `;
 
   try {
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      temperature: 0,
-      system: 'You are a helpful assistant that extracts resume data into structured JSON format.',
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const jsonString = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
 
-    // Extract text content from the response
-    const responseText = message.content
-      .filter((block) => block.type === 'text')
-      .map((block) => (block as { type: 'text'; text: string }).text)
-      .join('');
+    const data: ResumeData = JSON.parse(jsonString);
+    return data;
+  } catch (error) {
+    console.error("Gemini Parse Error:", error);
+    throw new Error("Failed to parse resume with Gemini.");
+  }
+}
 
-    // Try to parse JSON from the response
-    let parsedData: ResumeData;
+export async function enhanceTextWithGemini(text: string): Promise<string> {
+    if (!genAI) return text;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `Rewrite this resume bullet point to be more professional, action-oriented, and result-driven. Use strong verbs. Return only the enhanced text.\n\nInput: "${text}"`;
 
     try {
-      // Remove markdown code blocks if present
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      const jsonString = jsonMatch ? jsonMatch[1] : responseText;
-
-      parsedData = JSON.parse(jsonString.trim());
-    } catch (parseError) {
-      console.error('JSON parsing error:', parseError);
-      console.error('Response text:', responseText);
-      throw new Error('Failed to parse AI response');
+        const result = await model.generateContent(prompt);
+        return result.response.text().trim();
+    } catch (error) {
+        console.error("Gemini Enhance Error:", error);
+        return text;
     }
-
-    // Validate the structure
-    if (!parsedData.personalInfo || !parsedData.experience || !parsedData.education || !parsedData.skills) {
-      throw new Error('AI parsing failed: Invalid data structure');
-    }
-
-    return parsedData;
-  } catch (error) {
-    console.error('Claude API error:', error);
-    if (error instanceof Error) {
-      throw new Error(`AI parsing failed: ${error.message}`);
-    }
-    throw new Error('AI parsing failed');
-  }
 }
