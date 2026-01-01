@@ -7,15 +7,17 @@ import { ApiResponse, ResumeData } from '@/lib/types';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from './Toast';
 import { useAuth } from '@/context/AuthContext';
+import { storage, functions, APPWRITE_BUCKET_ID, APPWRITE_FUNCTION_PARSE_RESUME } from '@/lib/appwrite';
+import { ID } from 'appwrite';
 
 type UploadStage = 'idle' | 'uploading' | 'extracting' | 'processing' | 'finalizing';
 
 const STAGE_MESSAGES = {
   idle: '',
   uploading: 'Uploading your file...',
-  extracting: 'Extracting text from document...',
-  processing: 'AI is analyzing your resume...',
-  finalizing: 'Finalizing your resume data...',
+  extracting: 'AI is analyzing your resume...',
+  processing: 'Structuring data...',
+  finalizing: 'Finalizing...',
 };
 
 const STAGE_PROGRESS = {
@@ -39,24 +41,19 @@ export default function FileUpload() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
-    // Auth Check
     if (!loading && !user) {
-        // Option: Allow 1 guest upload, or force login.
-        // For "God Plan" monetization, forcing login is better for retention.
         router.push('/signup');
         return;
     }
 
-    // Tier/Credits Check
     if (user) {
         // @ts-ignore
         const tier = user.prefs?.tier || 'free';
         // @ts-ignore
-        const credits = user.prefs?.credits !== undefined ? user.prefs.credits : 3; // Default 3 if not set
+        const credits = user.prefs?.credits !== undefined ? user.prefs.credits : 3;
 
         if (tier === 'free' && credits <= 0) {
             showError("You have reached your free limit. Please upgrade to Pro.");
-            // Ideally show upgrade modal here
             return;
         }
     }
@@ -67,11 +64,10 @@ export default function FileUpload() {
     setStage('uploading');
     setProgress(0);
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      const msg = 'File must be under 10MB. Try compressing your file or use a different format.';
-      setError(msg);
-      showError(msg);
+      setError('File must be under 10MB.');
+      showError('File must be under 10MB.');
       setStage('idle');
       return;
     }
@@ -79,51 +75,52 @@ export default function FileUpload() {
     try {
       setProgress(STAGE_PROGRESS.uploading);
 
-      const formData = new FormData();
-      formData.append('file', file);
-      if (user) {
-          formData.append('userId', user.$id);
-      }
+      // 1. Upload to Appwrite Storage
+      const fileUpload = await storage.createFile(
+        APPWRITE_BUCKET_ID,
+        ID.unique(),
+        file
+      );
 
-      setTimeout(() => {
-        setStage('extracting');
-        setProgress(STAGE_PROGRESS.extracting);
-      }, 300);
+      setStage('extracting');
+      setProgress(STAGE_PROGRESS.extracting);
 
-      const response = await fetch('/api/parse', {
-        method: 'POST',
-        body: formData,
-      });
+      // 2. Call Appwrite Function
+      const execution = await functions.createExecution(
+        APPWRITE_FUNCTION_PARSE_RESUME,
+        JSON.stringify({
+            fileId: fileUpload.$id,
+            userId: user?.$id
+        })
+      );
 
       setStage('processing');
       setProgress(STAGE_PROGRESS.processing);
 
-      const result: ApiResponse<ResumeData> = await response.json();
+      if (execution.status === 'completed') {
+          const responseBody = JSON.parse(execution.responseBody);
 
-      if (!response.ok || !result.success) {
-        let errorMessage = result.error || 'Something went wrong processing your resume.';
-        setError(errorMessage);
-        showError(errorMessage);
-        setStage('idle');
-        setProgress(0);
-        return;
+          if (responseBody.success) {
+              setStage('finalizing');
+              setProgress(STAGE_PROGRESS.finalizing);
+
+              sessionStorage.setItem('resumeData', JSON.stringify(responseBody.data));
+              setProgress(100);
+              showSuccess('Resume processed successfully! Redirecting...');
+
+              setTimeout(() => {
+                router.push('/edit');
+              }, 800);
+          } else {
+              throw new Error(responseBody.error || "Function returned error");
+          }
+      } else {
+          throw new Error("Function execution failed: " + execution.status);
       }
 
-      setStage('finalizing');
-      setProgress(STAGE_PROGRESS.finalizing);
-
-      if (result.data) {
-        sessionStorage.setItem('resumeData', JSON.stringify(result.data));
-        setProgress(100);
-        showSuccess('Resume processed successfully! Redirecting...');
-
-        setTimeout(() => {
-          router.push('/edit');
-        }, 800);
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err);
-      const msg = 'Network error. Please check your connection and try again.';
+      const msg = err.message || 'Something went wrong.';
       setError(msg);
       showError(msg);
       setStage('idle');
@@ -137,8 +134,6 @@ export default function FileUpload() {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-      'application/vnd.ms-powerpoint': ['.ppt'],
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
     },
@@ -210,7 +205,7 @@ export default function FileUpload() {
                 {isDragActive ? 'Drop your resume here!' : 'Drop your resume here or click to browse'}
               </p>
               <p className="text-gray-500 text-sm mb-4">
-                PDF, Word, PowerPoint, or Image (Max 10MB)
+                PDF, Word, or Image (Max 10MB)
               </p>
               <div className="flex justify-center gap-3 flex-wrap">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -218,9 +213,6 @@ export default function FileUpload() {
                 </span>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   📝 Word
-                </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  📊 PowerPoint
                 </span>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                   🖼️ Image
@@ -260,17 +252,6 @@ export default function FileUpload() {
             </div>
           </div>
         )}
-
-        {/* Helpful tips */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-blue-900 text-sm font-semibold mb-2">💡 Tips for best results:</h3>
-          <ul className="text-blue-800 text-xs space-y-1 list-disc list-inside">
-            <li>Use PDFs with selectable text (not scanned images)</li>
-            <li>Ensure images are clear and text is readable</li>
-            <li>Keep file size under 10MB</li>
-            <li>Processing typically takes 10-30 seconds</li>
-          </ul>
-        </div>
       </div>
     </>
   );

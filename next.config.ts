@@ -1,11 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // output: 'export', // Reverted
+  output: 'export',
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ['pdfjs-dist', 'canvas'],
 };
 
 export default nextConfig;

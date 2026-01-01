@@ -8,6 +8,8 @@ import { ResumeData } from '@/lib/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { compressData, decompressData } from '@/lib/urlState';
 import { Download, AlertCircle, Share2, Check, Sparkles, RotateCw } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { functions, APPWRITE_FUNCTION_CREATE_PAYMENT } from '@/lib/appwrite';
 
 // Wrapper for Suspense (required for useSearchParams)
 export default function EditPage() {
@@ -21,13 +23,18 @@ export default function EditPage() {
 function EditPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [template, setTemplate] = useState<TemplateType>('modern');
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [isPremium, setIsPremium] = useState(false); // Watermark toggle
+
+  // Check if user is Pro
+  // @ts-ignore
+  const isPremium = user?.prefs?.tier === 'pro';
+
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   // Debounce the preview update to avoid PDF rendering lag on every keystroke
@@ -77,7 +84,6 @@ function EditPageContent() {
   };
 
   const checkDownloadLimit = () => {
-    // If premium is enabled (via our fake upgrade), bypass check
     if (isPremium) return true;
 
     const downloads = parseInt(localStorage.getItem('downloadCount') || '0');
@@ -150,11 +156,35 @@ function EditPageContent() {
     }
   };
 
-  const handleUpgrade = () => {
-    // Mock payment success
-    setIsPremium(true);
-    setShowUpgradeModal(false);
-    alert('Upgrade successful! Watermark removed and unlimited downloads enabled.');
+  const handleUpgrade = async () => {
+    if (!user) {
+        alert("Please log in or sign up to upgrade.");
+        return;
+    }
+
+    try {
+        const execution = await functions.createExecution(
+            APPWRITE_FUNCTION_CREATE_PAYMENT,
+            JSON.stringify({
+                userId: user.$id,
+                returnUrl: window.location.href
+            })
+        );
+
+        if (execution.status === 'completed') {
+            const data = JSON.parse(execution.responseBody);
+            if (data.success && data.url) {
+                window.location.href = data.url;
+            } else {
+                alert("Payment Error: " + (data.error || "Unknown"));
+            }
+        } else {
+            alert("Payment Function Failed");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Network Error starting payment");
+    }
   };
 
   if (!resumeData) {
@@ -342,7 +372,7 @@ function EditPageContent() {
                 <div className="p-3 border-b border-gray-700 flex justify-between items-center">
                   <span className="text-gray-300 text-sm font-medium">Live Preview</span>
                   <div className="flex gap-2 items-center">
-                    {/* Watermark Toggle (Mock Upgrade Trigger) */}
+                    {/* Watermark Toggle (Mock Upgrade Trigger if not premium) */}
                     <button
                       onClick={() => !isPremium && setShowUpgradeModal(true)}
                       className={`text-xs px-2 py-1 rounded-md transition-colors ${

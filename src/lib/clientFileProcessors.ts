@@ -1,7 +1,9 @@
 import mammoth from 'mammoth';
 import Tesseract from 'tesseract.js';
 import JSZip from 'jszip';
-import * as pdfjsLib from 'pdfjs-dist';
+// Use build/pdf to avoid Node canvas dependency
+// @ts-ignore
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 
 // Configure PDF.js worker
 if (typeof window !== 'undefined') {

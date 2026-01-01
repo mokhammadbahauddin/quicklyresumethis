@@ -124,7 +124,7 @@ function Section({
   );
 }
 
-import { enhanceTextClient } from '@/lib/clientAI';
+import { functions, APPWRITE_FUNCTION_ENHANCE_TEXT } from '@/lib/appwrite';
 
 // AI Enhancement Hook
 const useAIEnhancer = () => {
@@ -135,10 +135,16 @@ const useAIEnhancer = () => {
 
     setLoadingField(fieldId);
     try {
-      // Use Client-Side AI to support Static Export
-      const enhanced = await enhanceTextClient(text);
-      if (enhanced) {
-        onComplete(enhanced);
+      const execution = await functions.createExecution(
+        APPWRITE_FUNCTION_ENHANCE_TEXT,
+        JSON.stringify({ text })
+      );
+
+      if (execution.status === 'completed') {
+        const data = JSON.parse(execution.responseBody);
+        if (data.success && data.enhancedText) {
+          onComplete(data.enhancedText);
+        }
       }
     } catch (error) {
       console.error('AI Enhance failed:', error);
